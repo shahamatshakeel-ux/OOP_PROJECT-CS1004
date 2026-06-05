@@ -96,17 +96,6 @@ Battle against an AI-controlled opponent.
 
 ---
 
-## 👥 VS Player
-
-Local multiplayer mode.
-
-### Features
-- Two-player battles
-- Individual class selection
-- Custom player names
-
----
-
 # 🎨 Visual Features
 
 - Modern Fantasy UI
