@@ -1,0 +1,934 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turn-Based RPG Battle Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --bg: #0f1117;
+            --surface: #181c27;
+            --surface2: #1e2336;
+            --border: #2a3050;
+            --accent: #4f8ef7;
+            --accent2: #f7c94f;
+            --danger: #e05555;
+            --success: #4fbe8e;
+            --burn: #a855f7;
+            --skip: #f7c94f;
+            --text: #e8ecf7;
+            --muted: #6b748f
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 48px
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px
+        }
+
+        header h1 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: clamp(22px, 4vw, 34px);
+            color: var(--text)
+        }
+
+        header p {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 4px;
+            letter-spacing: 1px;
+            text-transform: uppercase
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 820px
+        }
+
+        .screen.active {
+            display: block
+        }
+
+        .setup-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 24px
+        }
+
+        .char-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 16px;
+            cursor: pointer;
+            transition: border-color .2s, transform .15s;
+            text-align: center
+        }
+
+        .char-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px)
+        }
+
+        .char-card.selected {
+            border-color: var(--accent);
+            background: var(--surface2)
+        }
+
+        .char-card .icon {
+            font-size: 36px;
+            margin-bottom: 10px
+        }
+
+        .char-card h3 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 8px
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 3px
+        }
+
+        .stat-row span:last-child {
+            color: var(--text)
+        }
+
+        .setup-input-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px
+        }
+
+        .setup-input-row input {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 14px;
+            outline: none;
+            transition: border-color .2s
+        }
+
+        .setup-input-row input:focus {
+            border-color: var(--accent)
+        }
+
+        .setup-input-row input::placeholder {
+            color: var(--muted)
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 28px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s
+        }
+
+        .btn:hover {
+            opacity: .88;
+            transform: translateY(-1px)
+        }
+
+        .btn:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+            transform: none
+        }
+
+        .btn.secondary {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text)
+        }
+
+        .btn.full {
+            width: 100%
+        }
+
+        .battle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px
+        }
+
+        .round-badge {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 5px 16px;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted)
+        }
+
+        .round-badge span {
+            color: var(--accent2);
+            font-weight: 500
+        }
+
+        .turn-indicator {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: .5px
+        }
+
+        .turn-indicator span {
+            color: var(--accent)
+        }
+
+        .fighters {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px
+        }
+
+        .fighter-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            position: relative;
+            transition: border-color .3s
+        }
+
+        .fighter-card.active-turn {
+            border-color: var(--accent)
+        }
+
+        .fighter-card.dead {
+            opacity: .35
+        }
+
+        .fighter-name {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 2px
+        }
+
+        .fighter-type {
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 14px
+        }
+
+        .fighter-icon {
+            font-size: 28px;
+            position: absolute;
+            top: 18px;
+            right: 18px
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 4px
+        }
+
+        .bar-wrap {
+            background: var(--surface2);
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 10px
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width .5s ease
+        }
+
+        .bar-fill.hp {
+            background: var(--danger)
+        }
+
+        .bar-fill.ep {
+            background: var(--accent)
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 9px;
+            border-radius: 10px;
+            margin-top: 4px;
+            font-weight: 500;
+            letter-spacing: .5px
+        }
+
+        .status-badge.burn {
+            background: rgba(168, 85, 247, .15);
+            color: var(--burn);
+            border: 1px solid var(--burn)
+        }
+
+        .status-badge.skip {
+            background: rgba(247, 201, 79, .12);
+            color: var(--skip);
+            border: 1px solid var(--skip)
+        }
+
+        .mini-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 12px
+        }
+
+        .mini-stat {
+            background: var(--surface2);
+            border-radius: 6px;
+            padding: 5px 8px;
+            text-align: center
+        }
+
+        .mini-stat .val {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text)
+        }
+
+        .mini-stat .key {
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+
+        .log-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            height: 190px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            scroll-behavior: smooth
+        }
+
+        .log-box::-webkit-scrollbar {
+            width: 4px
+        }
+
+        .log-box::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px
+        }
+
+        .log-entry {
+            font-size: 12px;
+            line-height: 1.7;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(42, 48, 80, .4);
+            animation: fadeIn .3s ease
+        }
+
+        .log-entry:last-child {
+            border-bottom: none
+        }
+
+        .log-entry.system {
+            color: var(--muted);
+            font-style: italic
+        }
+
+        .log-entry.attack {
+            color: var(--text)
+        }
+
+        .log-entry.skill {
+            color: var(--accent2)
+        }
+
+        .log-entry.damage {
+            color: var(--danger)
+        }
+
+        .log-entry.heal {
+            color: var(--success)
+        }
+
+        .log-entry.status {
+            color: var(--burn)
+        }
+
+        .log-entry.round {
+            color: var(--accent);
+            font-weight: 500;
+            letter-spacing: .5px
+        }
+
+        .log-entry.win {
+            color: var(--success);
+            font-weight: 500;
+            font-size: 13px
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-4px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px
+        }
+
+        .action-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            cursor: pointer;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            text-align: left;
+            transition: border-color .2s, background .2s, transform .1s
+        }
+
+        .action-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            background: var(--surface2);
+            transform: translateY(-1px)
+        }
+
+        .action-btn:disabled {
+            opacity: .3;
+            cursor: not-allowed
+        }
+
+        .action-btn .ab-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 3px
+        }
+
+        .action-btn .ab-sub {
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        .result-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 32px;
+            text-align: center
+        }
+
+        .result-box .result-icon {
+            font-size: 56px;
+            margin-bottom: 16px
+        }
+
+        .result-box h2 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 28px;
+            margin-bottom: 8px
+        }
+
+        .result-box p {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 28px
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 28px
+        }
+
+        .rs {
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 14px
+        }
+
+        .rs .rv {
+            font-family: 'Syne', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent2)
+        }
+
+        .rs .rk {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-top: 2px
+        }
+
+        .shake {
+            animation: shake .35s ease
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0)
+            }
+
+            20% {
+                transform: translateX(-6px)
+            }
+
+            60% {
+                transform: translateX(6px)
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>⚔ Turn-Based RPG Battle</h1>
+        <p>OOP Project Simulator — C++ Logic Mirrored in Browser</p>
+    </header>
+
+    <!-- SETUP -->
+    <div id="screen-setup" class="screen active">
+        <div class="setup-grid">
+            <div class="char-card" onclick="selectChar(0)" id="card-0">
+                <div class="icon">🗡️</div>
+                <h3>Warrior</h3>
+                <div class="stat-row"><span>HealthPower</span><span>150</span></div>
+                <div class="stat-row"><span>EnergyPower</span><span>60</span></div>
+                <div class="stat-row"><span>ATK</span><span>30</span></div>
+                <div class="stat-row"><span>DEF</span><span>15</span></div>
+                <div class="stat-row"><span>SPD</span><span>12</span></div>
+                <div class="stat-row"><span>Ability</span><span>Shield Bash</span></div>
+            </div>
+            <div class="char-card" onclick="selectChar(1)" id="card-1">
+                <div class="icon">🔮</div>
+                <h3>Mage</h3>
+                <div class="stat-row"><span>HealthPower</span><span>100</span></div>
+                <div class="stat-row"><span>EnergyPower</span><span>120</span></div>
+                <div class="stat-row"><span>ATK</span><span>25</span></div>
+                <div class="stat-row"><span>DEF</span><span>8</span></div>
+                <div class="stat-row"><span>SPD</span><span>15</span></div>
+                <div class="stat-row"><span>Ability</span><span>Fireball</span></div>
+            </div>
+            <div class="char-card" onclick="selectChar(2)" id="card-2">
+                <div class="icon">🛡️</div>
+                <h3>Tank</h3>
+                <div class="stat-row"><span>HealthPower</span><span>200</span></div>
+                <div class="stat-row"><span>EnergyPower</span><span>50</span></div>
+                <div class="stat-row"><span>ATK</span><span>20</span></div>
+                <div class="stat-row"><span>DEF</span><span>20</span></div>
+                <div class="stat-row"><span>SPD</span><span>8</span></div>
+                <div class="stat-row"><span>Ability</span><span>Iron Wall</span></div>
+            </div>
+        </div>
+        <div class="setup-input-row">
+            <input type="text" id="player-name" placeholder="Enter your character name..." maxlength="16" />
+        </div>
+        <button class="btn full" onclick="startBattle()" id="start-btn" disabled>Start Battle</button>
+    </div>
+
+    <!-- BATTLE -->
+    <div id="screen-battle" class="screen">
+        <div class="battle-header">
+            <div class="round-badge">Round <span id="round-num">1</span></div>
+            <div class="turn-indicator">— <span id="turn-name">?</span>'s turn —</div>
+            <button class="btn secondary" onclick="resetGame()" style="padding:6px 14px;font-size:12px;">↩
+                Restart</button>
+        </div>
+        <div class="fighters">
+            <div class="fighter-card" id="fc-player">
+                <div class="fighter-icon" id="pi-icon">🗡️</div>
+                <div class="fighter-name" id="pi-name">—</div>
+                <div class="fighter-type" id="pi-type">WARRIOR</div>
+                <div class="bar-label"><span>HealthPower</span><span id="pi-hp-val">—</span></div>
+                <div class="bar-wrap">
+                    <div class="bar-fill hp" id="pi-hp-bar" style="width:100%"></div>
+                </div>
+                <div class="bar-label"><span>EnergyPower</span><span id="pi-ep-val">—</span></div>
+                <div class="bar-wrap">
+                    <div class="bar-fill ep" id="pi-ep-bar" style="width:100%"></div>
+                </div>
+                <div id="pi-status"></div>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <div class="val" id="pi-atk">—</div>
+                        <div class="key">ATK</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="val" id="pi-def">—</div>
+                        <div class="key">DEF</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="val" id="pi-spd">—</div>
+                        <div class="key">SPD</div>
+                    </div>
+                </div>
+            </div>
+            <div class="fighter-card" id="fc-enemy">
+                <div class="fighter-icon" id="ei-icon">👹</div>
+                <div class="fighter-name" id="ei-name">—</div>
+                <div class="fighter-type" id="ei-type">ENEMY</div>
+                <div class="bar-label"><span>HealthPower</span><span id="ei-hp-val">—</span></div>
+                <div class="bar-wrap">
+                    <div class="bar-fill hp" id="ei-hp-bar" style="width:100%"></div>
+                </div>
+                <div class="bar-label"><span>EnergyPower</span><span id="ei-ep-val">—</span></div>
+                <div class="bar-wrap">
+                    <div class="bar-fill ep" id="ei-ep-bar" style="width:100%"></div>
+                </div>
+                <div id="ei-status"></div>
+                <div class="mini-stats">
+                    <div class="mini-stat">
+                        <div class="val" id="ei-atk">—</div>
+                        <div class="key">ATK</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="val" id="ei-def">—</div>
+                        <div class="key">DEF</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="val" id="ei-spd">—</div>
+                        <div class="key">SPD</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="log-box" id="log-box"></div>
+        <div class="actions">
+            <button class="action-btn" id="btn-attack" onclick="playerAction('attack')">
+                <div class="ab-title">⚔ Basic Attack</div>
+                <div class="ab-sub">Player ATK − Enemy DEF = damage</div>
+            </button>
+            <button class="action-btn" id="btn-skill" onclick="playerAction('skill')">
+                <div class="ab-title" id="skill-btn-title">✨ Use Ability</div>
+                <div class="ab-sub" id="skill-btn-sub">Special ability</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- RESULT -->
+    <div id="screen-result" class="screen">
+        <div class="result-box">
+            <div class="result-icon" id="res-icon">🏆</div>
+            <h2 id="res-title">Victory!</h2>
+            <p id="res-sub">The battle has ended.</p>
+            <div class="result-stats">
+                <div class="rs">
+                    <div class="rv" id="rs-rounds">—</div>
+                    <div class="rk">Rounds</div>
+                </div>
+                <div class="rs">
+                    <div class="rv" id="rs-hp">—</div>
+                    <div class="rk">HealthPower Left</div>
+                </div>
+                <div class="rs">
+                    <div class="rv" id="rs-winner">—</div>
+                    <div class="rk">Winner</div>
+                </div>
+            </div>
+            <button class="btn full" onclick="resetGame()">⟳ Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const CHARS = [
+            { type: 'Warrior', icon: '🗡️', hp: 150, ep: 60, atk: 30, def: 15, spd: 12, bonus: 10, skillCost: 20, skillName: 'Shield Bash', skillEffect: 'skip' },
+            { type: 'Mage', icon: '🔮', hp: 100, ep: 120, atk: 25, def: 8, spd: 15, bonus: 20, skillCost: 30, skillName: 'Fireball', skillEffect: 'burn' },
+            { type: 'Tank', icon: '🛡️', hp: 200, ep: 50, atk: 20, def: 20, spd: 8, bonus: 15, skillCost: 15, skillName: 'Iron Wall', skillEffect: 'heal' },
+        ];
+        const ENEMIES = [
+            { name: 'Enemy Warrior', icon: '⚔️', type: 'Warrior', hp: 130, ep: 50, atk: 28, def: 13, spd: 11, bonus: 8, skillCost: 20, skillName: 'Shield Bash', skillEffect: 'skip' },
+            { name: 'Enemy Mage', icon: '🌑', type: 'Mage', hp: 90, ep: 100, atk: 23, def: 6, spd: 14, bonus: 18, skillCost: 30, skillName: 'Fireball', skillEffect: 'burn' },
+            { name: 'Enemy Tank', icon: '💀', type: 'Tank', hp: 180, ep: 40, atk: 18, def: 18, spd: 7, bonus: 12, skillCost: 15, skillName: 'Iron Wall', skillEffect: 'heal' },
+        ];
+
+        let player, enemy, round, playerFirst, canAct;
+        let selectedChar = -1;
+
+        function mkChar(t, name) {
+            return {
+                name: name || t.name, type: t.type, icon: t.icon,
+                hp: t.hp, maxHp: t.hp, ep: t.ep, maxEp: t.ep,
+                atk: t.atk, def: t.def, spd: t.spd, bonus: t.bonus,
+                skillCost: t.skillCost, skillName: t.skillName, skillEffect: t.skillEffect,
+                effect: null, alive: true
+            };
+        }
+
+        function selectChar(i) {
+            selectedChar = i;
+            document.querySelectorAll('.char-card').forEach((c, j) => c.classList.toggle('selected', j === i));
+            document.getElementById('start-btn').disabled = false;
+        }
+        document.getElementById('player-name').addEventListener('input', () => {
+            document.getElementById('start-btn').disabled = selectedChar < 0;
+        });
+
+        function startBattle() {
+            if (selectedChar < 0) return;
+            const nm = document.getElementById('player-name').value.trim() || CHARS[selectedChar].type;
+            player = mkChar(CHARS[selectedChar], nm);
+            const ei = Math.floor(Math.random() * 3);
+            enemy = mkChar(ENEMIES[ei]);
+            round = 1; canAct = false;
+            playerFirst = player.spd >= enemy.spd;
+            document.getElementById('log-box').innerHTML = '';
+            showScreen('battle');
+            updateUI();
+            setSkillBtn();
+            log(`Battle started: ${player.name} vs ${enemy.name}`, 'system');
+            log(`${playerFirst ? player.name : enemy.name} goes first (higher SPD)`, 'system');
+            log(`━━━ ROUND ${round} ━━━`, 'round');
+            if (playerFirst) { setTurn(player.name); enableActions(true); }
+            else { setTurn(enemy.name); enableActions(false); setTimeout(enemyTurn, 900); }
+        }
+
+        function playerAction(type) {
+            if (!canAct) return;
+            enableActions(false);
+            if (type === 'attack') doAttack(player, enemy);
+            else doAbility(player, enemy);
+            processFX(player);
+            updateUI();
+            if (checkEnd()) return;
+            setTimeout(() => {
+                log(`━━━ ROUND ${round} ━━━`, 'round');
+                setTurn(enemy.name);
+                setTimeout(enemyTurn, 600);
+            }, 500);
+        }
+
+        function enemyTurn() {
+            if (!enemy.alive) return;
+            if (enemy.effect && enemy.effect.causesSkip) {
+                log(`${enemy.name} turn is skipped!`, 'system');
+                processFX(enemy); updateUI(); afterEnemy(); return;
+            }
+            if (enemy.ep >= 20) doAbility(enemy, player);
+            else doAttack(enemy, player);
+            processFX(enemy); updateUI();
+            if (checkEnd()) return;
+            afterEnemy();
+        }
+
+        function afterEnemy() {
+            round++;
+            if (!player.alive) { checkEnd(); return; }
+            if (player.effect && player.effect.causesSkip) {
+                log(`${player.name} turn is skipped!`, 'system');
+                processFX(player); updateUI();
+                round++;
+                log(`━━━ ROUND ${round} ━━━`, 'round');
+                setTurn(enemy.name);
+                setTimeout(enemyTurn, 900); return;
+            }
+            setTurn(player.name);
+            enableActions(true);
+        }
+
+        function doAttack(att, tgt) {
+            let dmg = att.atk - tgt.def; if (dmg < 0) dmg = 0;
+            tgt.hp = Math.max(0, tgt.hp - dmg); tgt.alive = tgt.hp > 0;
+            log(`${att.name} attacks ${tgt.name} for ${dmg} damage!`, 'attack');
+            shakeCard(tgt === enemy ? 'fc-enemy' : 'fc-player');
+        }
+
+        function doAbility(att, tgt) {
+            if (att.ep < att.skillCost) {
+                log(`${att.name} doesn't have enough energy! Basic attacking instead.`, 'system');
+                doAttack(att, tgt); return;
+            }
+            att.ep = Math.max(0, att.ep - att.skillCost);
+            if (att.skillEffect === 'heal') {
+                const h = 20 + att.bonus;
+                att.hp = Math.min(att.maxHp, att.hp + h);
+                log(`${att.name} uses ${att.skillName} — restored ${h} HealthPower!`, 'heal');
+            } else {
+                const dmg = (att.skillEffect === 'skip') ? 15 + att.bonus : 30 + att.bonus;
+                tgt.hp = Math.max(0, tgt.hp - dmg); tgt.alive = tgt.hp > 0;
+                log(`${att.name} uses ${att.skillName} on ${tgt.name} for ${dmg} damage!`, 'skill');
+                shakeCard(tgt === enemy ? 'fc-enemy' : 'fc-player');
+                if (att.skillEffect === 'skip') {
+                    tgt.effect = { name: 'Turn Skip', dmg: 0, dur: 1, causesSkip: true };
+                    log(`${tgt.name}'s next turn is SKIPPED!`, 'status');
+                } else {
+                    tgt.effect = { name: 'Burn', dmg: 5, dur: 3, causesSkip: false };
+                    log(`${tgt.name} is now BURNING! (5 damage/turn for 3 turns)`, 'status');
+                }
+            }
+        }
+
+        function processFX(c) {
+            if (!c.effect) return;
+            if (c.effect.dur <= 0) {
+                log(`${c.effect.name} has worn off on ${c.name}!`, 'system');
+                c.effect = null; return;
+            }
+            if (!c.effect.causesSkip) {
+                c.hp = Math.max(0, c.hp - c.effect.dmg); c.alive = c.hp > 0;
+                log(`${c.name} takes ${c.effect.dmg} damage from ${c.effect.name}!`, 'damage');
+            }
+            c.effect.dur--;
+        }
+
+        function checkEnd() {
+            if (player.hp > 0 && enemy.hp > 0) return false;
+            updateUI();
+            setTimeout(() => {
+                const w = player.hp > 0 ? player : enemy;
+                const l = player.hp > 0 ? enemy : player;
+                log(`${w.name} wins the battle!`, 'win');
+                showResult(w, l);
+            }, 600);
+            return true;
+        }
+
+        function showResult(w, l) {
+            const pw = w === player;
+            document.getElementById('res-icon').textContent = pw ? '🏆' : '💀';
+            document.getElementById('res-title').textContent = pw ? 'Victory!' : 'Defeated!';
+            document.getElementById('res-sub').textContent = `${w.name} defeated ${l.name}`;
+            document.getElementById('rs-rounds').textContent = round;
+            document.getElementById('rs-hp').textContent = Math.round(w.hp);
+            document.getElementById('rs-winner').textContent = w.name;
+            showScreen('result');
+        }
+
+        function updateUI() {
+            updF('pi', player); updF('ei', enemy);
+            document.getElementById('round-num').textContent = round;
+        }
+
+        function updF(p, c) {
+            document.getElementById(`${p}-name`).textContent = c.name;
+            document.getElementById(`${p}-type`).textContent = c.type;
+            document.getElementById(`${p}-icon`).textContent = c.icon;
+            document.getElementById(`${p}-atk`).textContent = c.atk;
+            document.getElementById(`${p}-def`).textContent = c.def;
+            document.getElementById(`${p}-spd`).textContent = c.spd;
+            const hp = Math.max(0, (c.hp / c.maxHp) * 100);
+            const ep = Math.max(0, (c.ep / c.maxEp) * 100);
+            document.getElementById(`${p}-hp-bar`).style.width = hp + '%';
+            document.getElementById(`${p}-ep-bar`).style.width = ep + '%';
+            document.getElementById(`${p}-hp-val`).textContent = `${Math.round(c.hp)} / ${c.maxHp}`;
+            document.getElementById(`${p}-ep-val`).textContent = `${Math.round(c.ep)} / ${c.maxEp}`;
+            const se = document.getElementById(`${p}-status`);
+            if (c.effect) {
+                const cls = c.effect.causesSkip ? 'skip' : 'burn';
+                const lbl = c.effect.causesSkip ? '⚡ Turn Skipped' : `🔥 Burning (${c.effect.dur} turns)`;
+                se.innerHTML = `<span class="status-badge ${cls}">${lbl}</span>`;
+            } else se.innerHTML = '';
+            const card = document.getElementById(p === 'pi' ? 'fc-player' : 'fc-enemy');
+            card.classList.toggle('dead', c.hp <= 0);
+        }
+
+        function setSkillBtn() {
+            document.getElementById('skill-btn-title').textContent = `✨ ${player.skillName}`;
+            const e = player.skillEffect;
+            const sub = e === 'heal' ? `Cost ${player.skillCost} Energy — Restores ${20 + player.bonus} HealthPower`
+                : e === 'skip' ? `Cost ${player.skillCost} Energy — ${15 + player.bonus} dmg + Skip Turn`
+                    : `Cost ${player.skillCost} Energy — ${30 + player.bonus} dmg + Burn`;
+            document.getElementById('skill-btn-sub').textContent = sub;
+        }
+
+        function enableActions(on) {
+            canAct = on;
+            document.getElementById('btn-attack').disabled = !on;
+            document.getElementById('btn-skill').disabled = !on;
+        }
+
+        function setTurn(name) { document.getElementById('turn-name').textContent = name; }
+
+        function log(msg, cls) {
+            const box = document.getElementById('log-box');
+            const el = document.createElement('div');
+            el.className = `log-entry ${cls}`;
+            const t = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            el.textContent = `[${t}] ${msg}`;
+            box.appendChild(el); box.scrollTop = box.scrollHeight;
+        }
+
+        function shakeCard(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+            setTimeout(() => el.classList.remove('shake'), 400);
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(`screen-${id}`).classList.add('active');
+        }
+
+        function resetGame() {
+            selectedChar = -1;
+            document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById('player-name').value = '';
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('log-box').innerHTML = '';
+            showScreen('setup');
+        }
+    </script>
+</body>
+
+</html>
